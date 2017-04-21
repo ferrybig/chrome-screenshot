@@ -1,0 +1,17 @@
+{
+  "name": "chrome-screenshot",
+  "version": "1.0.0",
+  "keywords": [
+    "util",
+    "functional",
+    "server",
+    "client",
+    "browser"
+  ],
+  "author": "Fernando van Loenhout <mailmehere@ferrybig.me>",
+  "contributors": [],
+  "dependencies": {
+    "chrome-remote-interface": "^0.19.1",
+    "fs": "0.0.1-security"
+  }
+}
