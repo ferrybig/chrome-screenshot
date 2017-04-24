@@ -15,11 +15,9 @@ const writeFile = (name, encoding) => {
 		);
 };
 
-const debug = text => {
-	return arg => {
-		console.log(text, arg);
-		return arg;
-	};
+const debug = text => arg => {
+	console.log(text, arg);
+	return arg;
 };
 
 const navigateToPage = (Page, url, timeout) => {
