@@ -12,6 +12,7 @@
   "contributors": [],
   "dependencies": {
     "chrome-remote-interface": "^0.19.1",
-    "fs": "0.0.1-security"
+    "fs": "0.0.1-security",
+    "prompt": "^1.0.0"
   }
 }

@@ -1,7 +1,9 @@
 /* global Promise */
+'use strict';
 
 const CDP = require('chrome-remote-interface');
 const fs = require('fs');
+const prompt = require('prompt');
 
 const writeFile = (name, encoding) => {
 	return result =>
@@ -15,8 +17,9 @@ const writeFile = (name, encoding) => {
 		);
 };
 
-const debug = text => arg => {
-	console.log(text, arg);
+const debug = (text, simple) => arg => {
+	if (!simple) console.log(text, arg);
+	else console.log(text);
 	return arg;
 };
 
@@ -36,43 +39,89 @@ const readFile = name => {};
 
 const delay = time => {};
 
-const screenshotLoop = client => {
-	// Extract used DevTools domains.
-	const { Page, Runtime, Emulation } = client;
+const errorCallback = cb => error => {
+	console.log('Error detected: ', error);
+	cb();
+};
 
-	var hostname = 'slack.com';
-	var url = 'https://' + hostname + '/';
+const askPrompt = name => {
+	return new Promise((resolv, reject) => {
+		prompt.get([name], function(err, result) {
+			if (err) {
+				return reject(err);
+			}
+			resolv(result[name]);
+		});
+	});
+};
 
-	const errorHandler = err => {
-		console.log('Errpr handler: ' + err);
-		client.close();
-	};
-	console.log('Loading');
-	debug('Testing debug')();
-	try {
-		Promise.all([Page.enable()])
-			.then(debug('1'), errorHandler)
+const screenshot = (Runtime, Page, errorHandler) => val => {
+	const split = val.split(' ');
+	const url = split[0];
+	let safeFile;
+	if (split.length === 1) {
+		safeFile = 'images/' + url.replace(/[^a-z0-9.\[\]]/g, '') + '.png';
+	} else {
+		safeFile = split[0];
+	}
+	return new Promise((resolv, reject) =>
+		new Promise(resolv => {
+			console.log('Capturing ' + url + ' to ' + safeFile);
+			resolv();
+		})
 			.then(
 				() =>
 					Runtime.evaluate({
 						expression: 'window.resizeTo(1280,800)'
 					}),
-				errorHandler
+				errorCallback(resolv)
 			)
-			.then(debug('2'), errorHandler)
-			.then(() => navigateToPage(Page, url, 10000), errorHandler)
-			.then(debug('3'), errorHandler)
-			.then(() => Page.captureScreenshot(), errorHandler)
-			.then(debug('4'), errorHandler)
-			.then(
-				writeFile('images/' + hostname + '.png', 'base64'),
-				errorHandler
-			)
-			.then(debug('5'), errorHandler)
+			//.then(debug('2'), errorHandler)
+			.then(() => navigateToPage(Page, url, 10000), errorCallback(resolv))
+			//.then(debug('3'), errorHandler)
+			.then(() => Page.captureScreenshot(), errorCallback(resolv))
+			//.then(debug('4'), errorHandler)
+			.then(writeFile(safeFile, 'base64'), errorCallback(resolv))
+			.then(debug('Captured ' + url, true), errorHandler)
+			.then(resolv)
+	);
+};
+
+const screenshotLoop = client => {
+	// Extract used DevTools domains.
+	const { Page, Runtime, Emulation } = client;
+
+	const errorHandler = err => {
+		console.log('Error: ' + err);
+		client.close();
+	};
+	prompt.start();
+
+	console.log('Loading');
+	try {
+		let prom = Promise.all([Page.enable()]);
+
+		var args = process.argv.slice(2);
+		if (args.length === 0) {
+			prom = prom
+				.then(() => askPrompt('Website'))
+				.then(screenshot(Runtime, Page, errorHandler));
+		} else {
+			args.forEach(function(val) {
+				prom = prom
+					.then(() => val)
+					.then(screenshot(Runtime, Page, errorHandler));
+				//.then(debug('Captured!'));
+			});
+		}
+
+		prom
+			.then(debug('Closing connection...', true))
 			.then(() => {
 				client.close();
 				return true;
-			}, errorHandler);
+			}, errorHandler)
+			.then(debug('Done', true));
 	} catch (err) {
 		errorHandler(err);
 	}
