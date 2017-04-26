@@ -25,13 +25,14 @@ const debug = (text, simple) => arg => {
 
 const navigateToPage = (Page, url, timeout) => {
 	return new Promise((resolve, reject) => {
-		Page.loadEventFired(() => {
-			resolve();
-		});
-		Page.navigate({ url: url });
-		setTimeout(() => {
+		let task = setTimeout(() => {
 			reject('Timeout exceeded');
 		}, timeout);
+		Page.loadEventFired(() => {
+			resolve();
+			clearTimeout(task);
+		});
+		Page.navigate({ url: url });
 	});
 };
 
@@ -121,7 +122,10 @@ const screenshotLoop = client => {
 				client.close();
 				return true;
 			}, errorHandler)
-			.then(debug('Done', true));
+			.then(() => {
+				prompt.stop();
+				console.log('done');
+			});
 	} catch (err) {
 		errorHandler(err);
 	}
