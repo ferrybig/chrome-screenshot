@@ -32,7 +32,10 @@ const navigateToPage = (Page, url, timeout) => {
 			resolve();
 			clearTimeout(task);
 		});
-		Page.navigate({ url: url });
+		Page.navigate({ url: url }).catch(err => {
+			reject(err);
+			clearTimeout(task);
+		});
 	});
 };
 
@@ -41,8 +44,10 @@ const readFile = name => {};
 const delay = time => {};
 
 const errorCallback = cb => error => {
-	console.log('Error detected: ', error);
+	if (!error.logged) console.log('Error detected: ', error);
 	cb();
+	error.logged = true;
+	throw error;
 };
 
 const askPrompt = name => {
@@ -83,8 +88,8 @@ const screenshot = (Runtime, Page, errorHandler) => val => {
 			.then(() => Page.captureScreenshot(), errorCallback(resolv))
 			//.then(debug('4'), errorHandler)
 			.then(writeFile(safeFile, 'base64'), errorCallback(resolv))
-			.then(debug('Captured ' + url, true), errorHandler)
-			.then(resolv)
+			.then(debug('Captured ' + url, true), errorCallback(resolv))
+			.then(() => resolv(safeFile), () => {})
 	);
 };
 
