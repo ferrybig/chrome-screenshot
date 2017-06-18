@@ -41,7 +41,11 @@ const navigateToPage = (Page, url, timeout) => {
 
 const readFile = name => {};
 
-const delay = time => {};
+const delay = time => {
+	return () => new Promise((resolv, reject) => {
+		setTimeout(resolv, time);
+	});
+};
 
 const errorCallback = cb => error => {
 	if (!error.logged) console.log('Error detected: ', error);
@@ -65,10 +69,16 @@ const screenshot = (Runtime, Page, errorHandler) => val => {
 	const split = val.split(' ');
 	const url = split[0];
 	let safeFile;
+	let delayedSafeFile;
 	if (split.length === 1) {
 		safeFile = 'images/' + url.replace(/[^a-z0-9.\[\]]/g, '') + '.png';
+		delayedSafeFile = 'images/' + url.replace(/[^a-z0-9.\[\]]/g, '') + '-delayed.png';
+	} else if (split.length === 2) {
+		safeFile = 'images/' + split[1] + '.png';
+		delayedSafeFile = 'images/' + split[1] + '-delayed.png';
 	} else {
-		safeFile = split[0];
+		safeFile = split[1];
+		delayedSafeFile = split[2];
 	}
 	return new Promise((resolv, reject) =>
 		new Promise(resolv => {
@@ -78,7 +88,7 @@ const screenshot = (Runtime, Page, errorHandler) => val => {
 			.then(
 				() =>
 					Runtime.evaluate({
-						expression: 'window.resizeTo(1280,800)'
+						expression: 'window.resizeTo(1280,800);'
 					}),
 				errorCallback(resolv)
 			)
@@ -88,6 +98,10 @@ const screenshot = (Runtime, Page, errorHandler) => val => {
 			.then(() => Page.captureScreenshot(), errorCallback(resolv))
 			//.then(debug('4'), errorHandler)
 			.then(writeFile(safeFile, 'base64'), errorCallback(resolv))
+			.then(delay(3500), errorCallback(resolv))
+			.then(() => Page.captureScreenshot(), errorCallback(resolv))
+			//.then(debug('4'), errorHandler)
+			.then(writeFile(delayedSafeFile, 'base64'), errorCallback(resolv))
 			.then(debug('Captured ' + url, true), errorCallback(resolv))
 			.then(() => resolv(safeFile), () => {})
 	);
